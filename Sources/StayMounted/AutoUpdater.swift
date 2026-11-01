@@ -120,6 +120,9 @@ final class AutoUpdater: NSObject, ObservableObject, UNUserNotificationCenterDel
             do {
                 let latest = try await UpdateController.latestRelease()
                 reachedGitHub = true
+                // Reaching GitHub clears an earlier failure (say, a check made while offline);
+                // otherwise Settings keeps showing it until the next update is installed.
+                lastError = nil
                 guard let release = latest,
                       UpdateController.isNewer(release.version, than: AppInfo.version) else {
                     UpdateAvailability.shared.pending = nil
@@ -136,7 +139,6 @@ final class AutoUpdater: NSObject, ObservableObject, UNUserNotificationCenterDel
                     let app = try await UpdateController.downloadAndStage(release)
                     try UpdateController.verifyCandidate(app, version: release.version)
                     staged = (release.version, app)
-                    lastError = nil
                     NSLog("StayMounted: update \(release.version) verified; waiting for a quiet moment to install")
                     waitForQuietMoment()
                 }
