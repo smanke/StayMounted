@@ -24,6 +24,8 @@ struct StayMountedApp: App {
         // A sandboxed build can't name the message port, so the App Store version stays out.
         let hubMenu = HubMenu(keeper: model.keeper) { MenuBarLabel.symbol(keeper: model.keeper) }
         hubMenu.start()
+        // ToolHUD lights its Pause button while keeping shares mounted is paused.
+        ToolHUDFeatureStates.start { ["pause": AppSettings.shared.pausedAll] }
         #endif
         AppDelegate.onURL = { url in
             let keeper = model.keeper

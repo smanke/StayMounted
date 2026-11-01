@@ -10,7 +10,12 @@ final class AppSettings {
     var shares: [WatchedShare] { didSet { saveShares() } }
 
     /// Stops all remounting without forgetting anything.
-    var pausedAll: Bool { didSet { defaults.set(pausedAll, forKey: "pausedAll") } }
+    var pausedAll: Bool {
+        didSet {
+            defaults.set(pausedAll, forKey: "pausedAll")
+            ToolHUDFeatureStates.publish()
+        }
+    }
 
     /// Ask before remounting a share that was ejected while the network was fine — most
     /// likely by hand. Off remounts at once, as if it had dropped.
