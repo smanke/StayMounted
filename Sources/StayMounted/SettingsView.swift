@@ -68,6 +68,5 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .onAppear { launchAtLogin.refresh() }
-        .frame(width: 460)
     }
 }

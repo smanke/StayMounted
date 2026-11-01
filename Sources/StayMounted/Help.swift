@@ -90,6 +90,7 @@ enum Help {
 
         HelpTopic(id: "settings", title: "Settings", symbol: "gearshape", blocks: [
             .text("Settings chooses login, asking before quitting, the eject countdown, whether StayMounted shows in the Dock and the menu bar, the appearance, syncing settings with your other Macs, and updates. With the menu bar icon hidden, open StayMounted again from Finder or Spotlight to see your shares in a window."),
+            .tip("Settings can be dragged bigger to see more at once, and keeps the size you choose."),
         ]),
 
         HelpTopic(id: "automation", title: "Automation", symbol: "gearshape.2", blocks: [
@@ -108,7 +109,21 @@ enum Help {
             .heading("Something went wrong"),
             .text("Open Log in the menu shows what StayMounted tried and what happened."),
         ]),
-    ] }
+    ] + updateTopics }
+
+    /// The App Store updates its own copy, so its build has no Updates page.
+    private static var updateTopics: [HelpTopic] {
+        #if APPSTORE
+        []
+        #else
+        [HelpTopic(id: "updates", title: "Updates", symbol: "arrow.down.circle", blocks: [
+            .text("Settings › Updates chooses what StayMounted does when a new version is out: install it automatically while your Mac is idle and no share is being mounted, ask you first, or not check at all. Check Now looks right away. Your shares stay mounted while it updates."),
+            .heading("What's new"),
+            .text("The update window shows the notes for the latest releases, with the ones you don't have yet marked New. \"Don't remind me about this version\" is ticked to begin with: click Not Now with it ticked, and StayMounted stops reminding you about that version (Check Now still offers it). Untick it to be reminded again."),
+            .text("After an update that installed itself, Settings shows what changed the next time it opens. Tick \"Don't show this again\" to put it away. What's New… beside Check Now shows the notes any time."),
+        ])]
+        #endif
+    }
 }
 
 // MARK: - Window

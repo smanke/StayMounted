@@ -4,19 +4,36 @@ import SwiftUI
 /// A SwiftUI view in an ordinary AppKit window. SwiftUI's own `Settings` scene can't be
 /// opened from AppKit (the Dock menu, a relaunch), so both windows are hosted here.
 @MainActor
-final class SettingsWindow {
-    /// StayMounted Settings: the preferences.
-    static let shared = SettingsWindow(title: "StayMounted Settings")
+final class SettingsWindow: NSObject, NSWindowDelegate {
+    /// StayMounted Settings: the preferences. It can be dragged wider as well as taller, and
+    /// keeps the size it's dragged to.
+    static let shared = SettingsWindow(title: "StayMounted Settings", formWidth: 460)
     /// The menu bar panel in a window, for the Dock icon and for when the menu bar
     /// icon is hidden and this is the only way to reach the shares.
-    static let shares = SettingsWindow(title: "StayMounted")
+    static let shares = SettingsWindow(title: "StayMounted", formWidth: nil)
 
     /// Set once at launch by the app, which owns the objects the window shows.
     var makeContent: (() -> AnyView)?
     private let title: String
+    /// Settings' form width, the narrowest it can be dragged to; nil for the shares window,
+    /// which keeps its content's own width.
+    private let formWidth: CGFloat?
     private var window: NSWindow?
 
-    private init(title: String) { self.title = title }
+    private init(title: String, formWidth: CGFloat?) {
+        self.title = title
+        self.formWidth = formWidth
+    }
+
+    /// The lowest Settings can be dragged to.
+    static let minimumHeight: CGFloat = 280
+
+    /// The content size the user last dragged Settings to (per Mac, not synced), or nil
+    /// while they haven't: then it opens at the form's own height.
+    static var chosenSize: NSSize? {
+        get { UserDefaults.standard.string(forKey: "settings.contentSize").map(NSSizeFromString) }
+        set { UserDefaults.standard.set(newValue.map(NSStringFromSize), forKey: "settings.contentSize") }
+    }
 
     func show() {
         if window == nil, let makeContent {
@@ -26,23 +43,72 @@ final class SettingsWindow {
             // full height crashed once it grew taller than the screen: AppKit clamped the
             // window, SwiftUI asked to grow again, and AppKit aborted the
             // update-constraints loop.
-            let natural = NSHostingView(rootView: content).fittingSize
-            let hosting = NSHostingController(rootView: content.frame(maxHeight: .infinity))
-            hosting.sizingOptions = []
-            let window = NSWindow(contentViewController: hosting)
-            window.title = title
-            window.styleMask = [.titled, .closable, .resizable]
             let available = (NSScreen.main?.visibleFrame.height ?? 800) - 80
-            window.setContentSize(NSSize(width: natural.width, height: min(max(natural.height, 200), available)))
-            window.contentMinSize = NSSize(width: natural.width, height: 200)
-            window.contentMaxSize = NSSize(width: natural.width, height: CGFloat.greatestFiniteMagnitude)
+            let window: NSWindow
+            if let formWidth {
+                // Measured at the form's width; it fills whatever size the user drags to.
+                let natural = NSHostingView(rootView: content.frame(width: formWidth)).fittingSize.height
+                let hosting = NSHostingController(rootView: content.frame(minWidth: formWidth, maxWidth: .infinity,
+                                                                          maxHeight: .infinity))
+                hosting.sizingOptions = []
+                // Inside a plain container, so SwiftUI doesn't manage the window's size limits
+                // (as the window's own content controller it cleared the minimum size whenever
+                // a sheet came and went).
+                let container = NSViewController()
+                container.view = NSView(frame: NSRect(x: 0, y: 0, width: formWidth, height: 400))
+                container.addChild(hosting)
+                hosting.view.frame = container.view.bounds
+                hosting.view.autoresizingMask = [.width, .height]
+                container.view.addSubview(hosting.view)
+                window = NSWindow(contentViewController: container)
+                var size = NSSize(width: formWidth, height: min(max(natural, Self.minimumHeight), available))
+                if let chosen = Self.chosenSize {
+                    size = NSSize(width: max(chosen.width, formWidth),
+                                  height: min(max(chosen.height, Self.minimumHeight), available))
+                }
+                window.setContentSize(size)
+                window.contentMinSize = NSSize(width: formWidth, height: Self.minimumHeight)
+                window.delegate = self
+            } else {
+                let natural = NSHostingView(rootView: content).fittingSize
+                let hosting = NSHostingController(rootView: content.frame(maxHeight: .infinity))
+                hosting.sizingOptions = []
+                window = NSWindow(contentViewController: hosting)
+                window.setContentSize(NSSize(width: natural.width, height: min(max(natural.height, 200), available)))
+                window.contentMinSize = NSSize(width: natural.width, height: 200)
+                window.contentMaxSize = NSSize(width: natural.width, height: CGFloat.greatestFiniteMagnitude)
+            }
+            window.title = title
+            // Resizable as well as scrolling: drag it bigger to see more at once.
+            window.styleMask = [.titled, .closable, .resizable]
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        #if !APPSTORE
+        // After an update whose notes weren't seen yet.
+        if formWidth != nil, let window { WhatsNew.shared.present(on: window) }
+        #endif
     }
+
+    #if !APPSTORE
+    /// This version's release notes, when asked for from Settings.
+    func showWhatsNew() {
+        if let window { WhatsNew.shared.present(on: window, asked: true) }
+    }
+    #endif
+
+    /// A size the user dragged Settings to is kept, and used next time.
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard formWidth != nil, let window else { return }
+        Self.chosenSize = window.contentRect(forFrameRect: window.frame).size
+    }
+
+    #if DEBUG
+    var debugWindow: NSWindow? { window }
+    #endif
 }
 
 /// Quits StayMounted without asking: for quitting itself (installing an update, ending a test).
@@ -72,6 +138,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DebugQuitTest.run(how)
             return
         }
+        #if !APPSTORE
+        // The update prompt, What's New and Settings drawn to PNGs; starts nothing else.
+        if let folder = ProcessInfo.processInfo.environment["STAYMOUNTED_DEBUG_UPDATE_NOTES"] {
+            DebugUpdateNotes.run(folder: folder)
+            return
+        }
+        #endif
         #endif
         // A menu bar app; it has a Dock icon only if the user turned one on.
         if AppPresence.showInDock { AppPresence.applyDock() }
