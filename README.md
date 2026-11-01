@@ -8,6 +8,8 @@ reads from the share then fails: a media library, a photo catalog, a backup tool
 folder. StayMounted is a small menu bar app that notices when an SMB share goes missing and
 quietly puts it back. It can also open your apps once the share is there.
 
+<p align="center"><img src="docs/images/staymounted-menu.png" width="360" alt="The StayMounted menu listing two watched shares marked Mounted, an Also mounted share with a Keep Mounted button, an Add a share field and a Pause All Remounting switch"></p>
+
 ---
 
 ## ⬇️ Download
@@ -60,6 +62,15 @@ Requires macOS 26 or later. Signed with Developer ID and notarized by Apple.
   pick where StayMounted appears. Right-click the Dock icon for **Shares…** or **Settings…**.
   With the menu bar icon off, clicking the Dock icon, or opening StayMounted again from
   Applications or Spotlight, shows your shares in a window.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/staymounted-open-when-mounted.png" alt="The Open When Mounted window for a share called Media, listing Music, TV and Photos to open in order, a Hidden checkbox for each app and a Wait before opening setting"><br><sub><b>Open When Mounted.</b> Apps that open in order once a share is back.</sub></td>
+<td width="50%" align="center"><img src="docs/images/staymounted-settings.webp" width="320" alt="StayMounted Settings with General, Dock and menu bar, iCloud and Updates sections"><br><sub><b>Settings.</b> Open at login, remounting after an eject, sync and updates.</sub></td>
+</tr>
+</table>
 
 ## Updates
 
